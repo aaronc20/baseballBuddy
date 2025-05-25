@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MLB Games</title>
+  <style>
+    table {
+        border: 1px solid black;
+        border-collapse: collapse;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid black;
+        padding: 2px 3px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+  </style>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    function toggleDetails(button) {
+      const gameDiv = button.parentElement;
+      const details = gameDiv.querySelector(".game-details");
+      details.classList.toggle("hidden");
+      const arrows = button.querySelectorAll(".arrow");
+      arrows.forEach(a => a.classList.toggle("rotate-180"));
+    }
+  </script>
+</head>
+<body class="bg-gray-100 text-center">
+  <h1 class="text-3xl font-bold mt-10">MLB Games</h1>
+
+  <div class="flex justify-center flex-col items-center mt-10 space-y-6">
+    {% for game in games %}
+      <div class="game bg-white shadow-lg rounded-lg w-11/12 sm:w-128 p-6">
+        <button class="w-full flex items-center justify-between text-gray-800 p-3 rounded-md focus:outline-none hover:bg-gray-300" onclick="toggleDetails(this)">
+          <span class="arrow transform transition-transform">&#9660;</span>
+          <span>{{ game.away_team }} @ {{ game.home_team }}<br>{{ game.time }}</span>
+          <span class="arrow transform transition-transform">&#9660;</span>
+        </button>
+
+        <!-- START of toggleable content -->
+        <div class="game-details mt-4 hidden">
+          <!-- Venue Info Section -->
+          <div class="mb-6 bg-white border border-gray-300 rounded-lg p-4 shadow text-center">
+            <h2 class="font-semibold">Venue</h2>
+            <p>{{ game.venue }}</p>
+            <p>{{ game.weather }}</p>
+            <p>{{ game.wind }}</p>
+          </div>
+
+          <!-- Game Info - 2 columns: Away and Home -->
+          <div class="flex justify-between w-full items-stretch">
+            <!-- Away Team -->
+            <div class="w-1/2 px-2">
+              <div class="h-full bg-white border border-gray-300 rounded-lg p-4 shadow">
+                <h2 class="font-semibold">{{ game.away_team }}</h2>
+                <p>{{ game.away_pitcher }}</p>
+                <table class="border border-black mx-auto text-xs">{{ game.away_pitcher_splits }}</table>
+
+                <h3 class="font-semibold text-sm mt-4 mb-2 border-t pt-2">Lineup</h3>
+                <div class="space-y-2">
+                  {{ game.away_lineup }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Home Team -->
+            <div class="w-1/2 px-2">
+              <div class="h-full bg-white border border-gray-300 rounded-lg p-4 shadow">
+                <h2 class="font-semibold">{{ game.home_team }}</h2>
+                <p>{{ game.home_pitcher }}</p>
+                <table class="border border-black mx-auto text-xs">{{ game.home_pitcher_splits }}</table>
+
+                <h3 class="font-semibold text-sm mt-4 mb-2 border-t pt-2">Lineup</h3>
+                <div class="space-y-2">
+                  {{ game.home_lineup }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Extra Details if any -->
+          <div class="mt-4 text-left">
+            <p><strong>Details:</strong> Game details go here.</p>
+          </div>
+        </div>
+        <!-- END of toggleable content -->
+
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
