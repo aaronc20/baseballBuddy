@@ -1,13 +1,28 @@
-from app.models.statisticSplits.split import Split
+from src.models.statisticSplits.split import Split
 
 class GameLog(Split):
-    def __init__(self, splits):
+    def __init__(self, splits, group):
         super().__init__(splits)
 
-    def get_last_X_games_stats(self, numGames):
+        self.pa_or_bf = "plateAppearances" if group == "hitting" else "battersFaced"
+        self.split_data = self.splits["splits"]
+        self.configured_data = None
 
+    def get_split_data(self):
+        return self.configured_data
+    
+    def get_short_name(self):
+        return f"last {self.game_span} games"
+    
+    def configure(self, games):
+        self.get_last_X_games_stats(games)
+        self.game_span = games
+
+    def get_last_X_games_stats(self, numGames):
+        
+        
         cumulative_stats = {
-            "plateAppearances": 0,
+            self.pa_or_bf: 0,
             "atBats": 0,
             "hits": 0,
             "doubles": 0,
@@ -25,7 +40,7 @@ class GameLog(Split):
             
             try:
 
-                stats = self.splits[index]['stat']
+                stats = self.split_data[index]['stat']
                 for k in cumulative_stats.keys():
                     cumulative_stats[k] += stats[k]
 
@@ -35,7 +50,7 @@ class GameLog(Split):
         calculated_stats = self.calculate_percentage_stats(cumulative_stats)
 
         
-        return cumulative_stats | calculated_stats
+        self.configured_data = cumulative_stats | calculated_stats
     
     def calculate_percentage_stats(self, cumulative_stats):
 
@@ -48,7 +63,7 @@ class GameLog(Split):
         ab = cumulative_stats['atBats']
         bb = cumulative_stats['baseOnBalls']
         hbp = cumulative_stats['hitByPitch']
-        pa = cumulative_stats['plateAppearances']
+        pa = cumulative_stats[self.pa_or_bf]
         sf = cumulative_stats['sacFlies']
 
         avg = hits/ab
@@ -72,22 +87,4 @@ class GameLog(Split):
 
         
 
-def test():
 
-    e = "v1/people/621566/stats?stats=gameLog"
-
-    from app.api.statsapi import StatsAPI
-
-    with StatsAPI() as api:
-
-        r = api.fetch(e)
-
-    splits = r['stats'][0]['splits']
-    gls = GameLog(splits)
-    import json
-    print(json.dumps(gls.get_last_X_games_stats(5), indent=2))
-
-    
-
-
-test()

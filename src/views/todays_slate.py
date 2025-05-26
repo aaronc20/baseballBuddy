@@ -1,5 +1,6 @@
 from src.models.schedule import Schedule
 
+from colorama import Fore
 #
 # V2 of todays_slate
 # emphasis on runtime (sacrificing raw compute time for http processing speed)
@@ -8,17 +9,49 @@ from jinja2 import Environment, FileSystemLoader
 import os
 # delete later once implemented into controllers
 from src.api.statsapi import StatsAPI
+from src.models.statisticSplits.gamelog import GameLog
+from src.models.statisticSplits.stat_splits import StatSplits
+from src.models.statisticSplits.career_stat_splits import CareerStatSplits
+
 from tabulate import tabulate
 from functools import reduce
 
+def create_table_row(s):
+    split_data = s.get_split_data()
+
+    hr_p = "N/A"
+    h_p = "N/A"
+
+    if split_data['plateAppearances'] != 0:
+        hr_p = f"{(100*split_data['homeRuns']/split_data['plateAppearances']):.2f}"
+        h_p = f"{(100*split_data['hits']/split_data['plateAppearances']):.2f}"
+
+        if float(h_p) > 25:
+            h_p = f'<span style="color:green"><strong>{h_p}</strong></span>'
+        elif float(h_p) < 20:
+            h_p = f'<span style="color:red"><strong>{h_p}</strong></span>'
+
+    else:
+        hr_p = "N/A"
+        h_p = "N/A"
+
+    return {
+        "split": s.get_short_name(),
+        "pa": split_data['plateAppearances'],
+        'avg': split_data['avg'],
+        'obp': split_data['obp'],
+        'slg': split_data['slg'],
+        'ops': split_data['ops'],
+        'hr%': hr_p,
+        'h%': h_p,
+    }
+    
 def update_slate():
 
     games = Schedule().retrieve_games()
     games_data = []
 
     for i, game in enumerate(games):
-
-        
 
         starters = {
             "away": game.away_starter(),
@@ -92,6 +125,7 @@ def update_slate():
                         }
 
                         table.append(row_data)
+
                 
                 table = tabulate(table, tablefmt='html', headers='keys')
                 table = table.replace("<table>", "").replace("</table>", "")
@@ -115,7 +149,9 @@ def update_slate():
         if lineups['away'] or lineups['home']:
             personIds = ",".join([str(person.id) for person in (lineups['away'] + lineups['home'])])
             print(personIds)
-            hitting_hydration = "stats(group=hitting,type=[statSplits,careerStatSplits],sitCodes=[h,a,vl,vr])"
+            # hitting_hydration = "stats(group=hitting,type=[statSplits,careerStatSplits],sitCodes=[h,a,vl,vr])"
+            hitting_hydration = "stats(group=hitting,type=[statSplits,careerStatSplits,gameLog],sitCodes=[h,a,vl,vr],seasons=[2025])"
+            # hitting_hydration = "stats(group=hitting,type=gameLog)"
 
             batter_hydration_params = {
                 "personIds": personIds,
@@ -135,33 +171,61 @@ def update_slate():
                 for stat in batter['stats']:
 
                     statType = stat['type']['displayName']
+                    statGroup = stat['group']['displayName']
 
-                    for batter_split in stat['splits']:
+                    if statType == "gameLog":
+                        
+                        print("gamelogggG")
+                        s = GameLog(stat, statGroup)
 
-                        split = batter_split['split']['description']
-                        stat = batter_split['stat']
+                        for game_span in [7,15,30]:
+                            s.configure(game_span)
+                            table.append(create_table_row(s))
 
-                        if stat['plateAppearances'] != 0:
-                            hr_p = f"{(100*stat['homeRuns']/stat['plateAppearances']):.2f}"
-                            h_p = f"{(100*stat['hits']/stat['plateAppearances']):.2f}"
-                        else:
-                            hr_p = "N/A"
-                            h_p = "N/A"
+                    elif statType == "statSplits":
+                        
+                        for split in stat['splits']:
+                            
+                            s = StatSplits(split, statGroup)
+                            
+                            table.append(create_table_row(s))
+                      
+                    elif statType == "careerStatSplits":
+                        
+                        for split in stat['splits']:
+                            
+                            s = CareerStatSplits(split, statGroup)
 
-                        row_data = {
-                            "split": f"{statType} {split}",
-                            "pa": stat['plateAppearances'],
-                            'avg': stat['avg'],
-                            'obp': stat['obp'],
-                            'slg': stat['slg'],
-                            'ops': stat['ops'],
-                            'hr%': hr_p,
-                            'h%': h_p,
-                        }
+                            table.append(create_table_row(s))
 
-                        table.append(row_data)
 
-                table = tabulate(table, tablefmt='html', headers='keys')
+                    # elif statType == "careerStatSplits":
+                    #     split_data = CareerStatSplits(stat)
+                        
+                    # print(type(s))
+                    # split_data = s.get_split_data()
+
+                    # if split_data['plateAppearances'] != 0:
+                    #     hr_p = f"{(100*split_data['homeRuns']/split_data['plateAppearances']):.2f}"
+                    #     h_p = f"{(100*split_data['hits']/split_data['plateAppearances']):.2f}"
+                    # else:
+                    #     hr_p = "N/A"
+                    #     h_p = "N/A"
+
+                    # row_data = {
+                    #     "split": s.split_short_name(),
+                    #     "pa": split_data['plateAppearances'],
+                    #     'avg': split_data['avg'],
+                    #     'obp': split_data['obp'],
+                    #     'slg': split_data['slg'],
+                    #     'ops': split_data['ops'],
+                    #     'hr%': hr_p,
+                    #     'h%': h_p,
+                    # }
+
+                    # table.append(row_data)
+
+                table = tabulate(table, tablefmt='unsafehtml', headers='keys')
                 table = table.replace("<table>", "<table class=\"border border-black mx-auto text-xs\">")
 
                 batter_tables[batter_id] = table
