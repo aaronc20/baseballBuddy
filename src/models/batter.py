@@ -14,6 +14,8 @@ class Batter(Player):
             })
         return data.get("stats", [])
 
+
+
     def get_home_run_count(self, season: int = 2024):
         """Fetch the home run count for this hitter."""
         stats = self.get_stats(season)

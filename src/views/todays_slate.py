@@ -163,9 +163,11 @@ def update_slate():
 
             batter_data = r['people']
             batter_tables = {}
+            batter_handedness = {}
 
             for batter in batter_data:
                 batter_id = batter['id']
+                batter_handedness[batter_id] = batter['batSide']['code']
 
                 table = []
                 for stat in batter['stats']:
@@ -232,12 +234,12 @@ def update_slate():
             
             away_lineup_html = "" if lineups['away'] else "Lineup Not Released"
             for order_spot, away_batter in enumerate(lineups['away']):
-                away_lineup_html += f"{order_spot}: {away_batter.get_name()}<br>{batter_tables[away_batter.id]}"
+                away_lineup_html += f"{order_spot}: {away_batter.get_name()} ({batter_handedness[away_batter.id]})<br>{batter_tables[away_batter.id]}"
                 
 
             home_lineup_html = "" if lineups['home'] else "Lineup Not Released"
             for order_spot, home_batter in enumerate(lineups['home']):
-                home_lineup_html += f"{order_spot}: {home_batter.get_name()}<br>{batter_tables[home_batter.id]}"
+                home_lineup_html += f"{order_spot}: {home_batter.get_name()} ({batter_handedness[home_batter.id]})<br>{batter_tables[home_batter.id]}"
 
         else:
 
