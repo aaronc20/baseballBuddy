@@ -16,15 +16,18 @@ from src.models.statisticSplits.career_stat_splits import CareerStatSplits
 from tabulate import tabulate
 from functools import reduce
 
-def create_table_row(s):
+def create_table_row(s, type=None):
+    
+    pa_or_bf = "battersFaced" if type == "pitching" else "plateAppearances"
+    
     split_data = s.get_split_data()
 
     hr_p = "N/A"
     h_p = "N/A"
 
-    if split_data['plateAppearances'] != 0:
-        hr_p = f"{(100*split_data['homeRuns']/split_data['plateAppearances']):.2f}"
-        h_p = f"{(100*split_data['hits']/split_data['plateAppearances']):.2f}"
+    if split_data[pa_or_bf] != 0:
+        hr_p = f"{(100*split_data['homeRuns']/split_data[pa_or_bf]):.2f}"
+        h_p = f"{(100*split_data['hits']/split_data[pa_or_bf]):.2f}"
 
         if float(h_p) > 25:
             h_p = f'<span style="color:green"><strong>{h_p}</strong></span>'
@@ -37,7 +40,7 @@ def create_table_row(s):
 
     return {
         "split": s.get_short_name(),
-        "pa": split_data['plateAppearances'],
+        "pa": split_data[pa_or_bf],
         'avg': split_data['avg'],
         'obp': split_data['obp'],
         'slg': split_data['slg'],
@@ -51,8 +54,10 @@ def update_slate():
     games = Schedule().retrieve_games()
     games_data = []
 
+    slate_length = len(games)
     for i, game in enumerate(games):
 
+        print(f"Fetching game {i+1} of {slate_length}.")
         starters = {
             "away": game.away_starter(),
             "home": game.home_starter(),
@@ -71,8 +76,7 @@ def update_slate():
 
             
             personIds = ",".join(sps)
-            print(personIds)
-            hydration = "stats(group=pitching,type=[statSplits,careerStatSplits],sitCodes=[h,a,vl,vr])"
+            hydration = "stats(group=pitching,type=[statSplits,careerStatSplits,gameLog],sitCodes=[h,a,vl,vr])"
 
             pitcher_hydration_params = {
                 "personIds": personIds,
@@ -95,39 +99,26 @@ def update_slate():
                 for stat in people['stats']:
                     
                     statType = stat['type']['displayName']
-                    # make html tables here
+                    statGroup = stat['group']['displayName']
 
-                    for person_split in stat['splits']:
-
-                        split = person_split['split']['description']
+                    if statType == "gameLog":
                         
-                        stat = person_split['stat']
+                        s = GameLog(stat, statGroup)
+                        for _ in [3,5,7]:
+                            s.configure(_)
+                            table.append(create_table_row(s, statGroup))
 
-                        hr_p = "N/A"
-                        h_p = "N/A"
+                    elif statType == "statSplits":
+                        for split in stat['splits']:
+                            s = StatSplits(split, statGroup)
+                            table.append(create_table_row(s, statGroup))
 
-                        if stat['battersFaced'] != 0:
-
-                            hr_p = f"{(100*stat['homeRuns']/stat['battersFaced']):.2f}"
-                            h_p = f"{(100*stat['hits']/stat['battersFaced']):.2f}"
-
-
-                            
-                        row_data = {
-                            "split": f"{statType} {split}",
-                            "pa": stat['battersFaced'],
-                            'avg': stat['avg'],
-                            'obp': stat['obp'],
-                            'slg': stat['slg'],
-                            'ops': stat['ops'],
-                            'hr%': hr_p,
-                            'h%': h_p,
-                        }
-
-                        table.append(row_data)
-
+                    elif statType == "careerStatSplits":
+                        for split in stat['splits']:
+                            s = CareerStatSplits(split, statGroup)
+                            table.append(create_table_row(s, statGroup))
                 
-                table = tabulate(table, tablefmt='html', headers='keys')
+                table = tabulate(table, tablefmt='unsafehtml', headers='keys')
                 table = table.replace("<table>", "").replace("</table>", "")
 
                 
@@ -148,7 +139,7 @@ def update_slate():
 
         if lineups['away'] or lineups['home']:
             personIds = ",".join([str(person.id) for person in (lineups['away'] + lineups['home'])])
-            print(personIds)
+
             # hitting_hydration = "stats(group=hitting,type=[statSplits,careerStatSplits],sitCodes=[h,a,vl,vr])"
             hitting_hydration = "stats(group=hitting,type=[statSplits,careerStatSplits,gameLog],sitCodes=[h,a,vl,vr],seasons=[2025])"
             # hitting_hydration = "stats(group=hitting,type=gameLog)"
@@ -177,7 +168,6 @@ def update_slate():
 
                     if statType == "gameLog":
                         
-                        print("gamelogggG")
                         s = GameLog(stat, statGroup)
 
                         for game_span in [7,15,30]:
@@ -234,12 +224,12 @@ def update_slate():
             
             away_lineup_html = "" if lineups['away'] else "Lineup Not Released"
             for order_spot, away_batter in enumerate(lineups['away']):
-                away_lineup_html += f"{order_spot}: {away_batter.get_name()} ({batter_handedness[away_batter.id]})<br>{batter_tables[away_batter.id]}"
+                away_lineup_html += f"{order_spot + 1}: {away_batter.get_name()} ({batter_handedness[away_batter.id]})<br>{batter_tables[away_batter.id]}"
                 
 
             home_lineup_html = "" if lineups['home'] else "Lineup Not Released"
             for order_spot, home_batter in enumerate(lineups['home']):
-                home_lineup_html += f"{order_spot}: {home_batter.get_name()} ({batter_handedness[home_batter.id]})<br>{batter_tables[home_batter.id]}"
+                home_lineup_html += f"{order_spot + 1}: {home_batter.get_name()} ({batter_handedness[home_batter.id]})<br>{batter_tables[home_batter.id]}"
 
         else:
 
